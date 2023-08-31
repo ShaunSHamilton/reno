@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Renogy Battery</title>
+    <style>
+      body {
+        background-color: black;
+        color: #fdfdfd;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Renogy Battery</h1>
+
+    <canvas id="chart" width="400" height="400"></canvas>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="module">
+      // import Chart from "../node_modules/chart.js";
+
+      const canvas = document.getElementById("chart");
+
+      const data = await fetch("http://localhost:3001/bt-data.json");
+
+      const pre_stats = await data.json();
+
+      console.log(pre_stats);
+
+      const stats = pre_stats.reduce((acc, curr) => {
+        const volt =
+          curr?.data?.Levels?.volt ?? acc.findLast((i) => i.volt)?.volt ?? 0;
+
+        const current =
+          curr?.data?.Levels?.current ??
+          acc.findLast((i) => i.current)?.current ??
+          0;
+
+        const watts = volt * current;
+
+        const charge_level =
+          curr?.data?.Levels?.charge_level ??
+          acc.findLast((i) => i.charge_level)?.charge_level ??
+          0;
+
+        const cell_volts = curr?.data?.CellVolts?.cell_volts ??
+          acc.findLast((i) => i.cell_volts)?.cell_volts ?? [0, 0, 0, 0];
+
+        const timestamp = curr.timestamp;
+
+        return [
+          ...acc,
+          {
+            timestamp,
+            volt,
+            current,
+            watts,
+            charge_level,
+            cell_volts,
+          },
+        ];
+      }, []);
+
+      console.log(stats);
+
+      new Chart(canvas, {
+        type: "line",
+        data: {
+          labels: stats.map(({ timestamp }) => timestamp),
+          datasets: [
+            {
+              label: "Voltage",
+              data: stats.map(({ volt, timestamp }) => {
+                return {
+                  y: volt,
+                  x: timestamp,
+                };
+              }),
+              borderColor: "red",
+            },
+            {
+              label: "Current",
+              data: stats.map(({ current, timestamp }) => {
+                return {
+                  y: current,
+                  x: timestamp,
+                };
+              }),
+              borderColor: "blue",
+            },
+            {
+              label: "Watts",
+              data: stats.map(({ watts, timestamp }) => {
+                return {
+                  y: watts,
+                  x: timestamp,
+                };
+              }),
+              borderColor: "green",
+            },
+            {
+              label: "SoC",
+              data: stats.map(({ charge_level, timestamp }) => {
+                return {
+                  y: charge_level,
+                  x: timestamp,
+                };
+              }),
+              borderColor: "orange",
+            },
+            // {
+            //   label: "Cell 1",
+            //   data: stats.map(({ cell_volts, timestamp }) => {
+            //     return {
+            //       y: cell_volts?.[0],
+            //       x: timestamp,
+            //     };
+            //   }),
+            //   borderColor: "purple",
+            // },
+            // {
+            //   label: "Cell 2",
+            //   data: stats.map(({ cell_volts, timestamp }) => {
+            //     return {
+            //       y: cell_volts?.[1],
+            //       x: timestamp,
+            //     };
+            //   }),
+            //   borderColor: "pink",
+            // },
+            // {
+            //   label: "Cell 3",
+            //   data: stats.map(({ cell_volts, timestamp }) => {
+            //     return {
+            //       y: cell_volts?.[2],
+            //       x: timestamp,
+            //     };
+            //   }),
+            //   borderColor: "yellow",
+            // },
+            // {
+            //   label: "Cell 4",
+            //   data: stats.map(({ cell_volts, timestamp }) => {
+            //     return {
+            //       y: cell_volts?.[3],
+            //       x: timestamp,
+            //     };
+            //   }),
+            //   borderColor: "brown",
+            // },
+          ],
+        },
+      });
+    </script>
+  </body>
+</html>
