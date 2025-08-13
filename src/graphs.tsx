@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { Line } from "react-chartjs-2";
 import {
   CategoryScale,
@@ -7,39 +7,26 @@ import {
   LinearScale,
   PointElement,
 } from "chart.js";
+import { DataContext } from "./state";
 
 Chart.register(CategoryScale, LinearScale, PointElement, LineElement);
 
-type Stat = {
-  timestamp: number;
-  volt: number;
-};
-
 export function Graphs() {
-  const [stats, setStats] = useState<Stat[]>([]);
+  const data = useContext(DataContext);
 
-  useEffect(() => {
-    // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
-    async function getStats() {
-      const stats = [
-        { timestamp: 0, volt: 13.1 },
-        { timestamp: 1, volt: 13.2 },
-      ];
-      setStats(stats);
-    }
-    getStats();
-  }, []);
+  const levels = data.filter(({ data }) => data.Levels);
 
   return (
     <section>
       <Line
         datasetIdKey="volt"
         data={{
-          labels: stats.map(({ timestamp }) => timestamp),
+          labels: levels.map(({ timestamp }) => timestamp),
           datasets: [
             {
               label: "Voltage",
-              data: stats.map(({ volt, timestamp }) => {
+              data: levels.map(({ data, timestamp }) => {
+                const volt = data.Levels?.volt ?? 0;
                 return {
                   y: volt,
                   x: timestamp,

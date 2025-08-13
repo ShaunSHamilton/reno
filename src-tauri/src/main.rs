@@ -14,6 +14,8 @@ use commands::{
 };
 use state::AppState;
 
+use config::get_config;
+
 fn main() {
     tauri::Builder::default()
         .manage(AppState::default())
@@ -23,7 +25,9 @@ fn main() {
             search_for_peripherals,
             connect_to_peripheral,
             request_single_event,
-            request_multiple_events
+            request_multiple_events,
+            // Config
+            get_config
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

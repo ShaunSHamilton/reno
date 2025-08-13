@@ -20,13 +20,13 @@
       "fs": {
         "readFile": true,
         "writeFile": true,
-        "scope": ["$APPDATA/config/*", "$APPDATA/data/*"]
+        "scope": ["$APPDATA/config/*", "$APPDATA/*"]
       }
     },
     "bundle": {
       "active": true,
       "targets": "all",
-      "identifier": "com.tauri.dev",
+      "identifier": "reno",
       "icon": [
         "icons/32x32.png",
         "icons/128x128.png",

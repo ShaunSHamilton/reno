@@ -1,16 +1,24 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
 use btleplug::{
     api::{bleuuid::BleUuid, Central, CentralEvent, Manager as _, Peripheral as _, ScanFilter},
     platform::{Manager, Peripheral},
 };
 use tauri::Manager as _;
+use tokio::{select, time};
 use tokio_stream::StreamExt;
 
 use crate::{
     adapter::AdapterError,
+    config::save_data_to_file,
     data::{Data, DataView},
-    peripheral::{get_levels, handle_data, subscribe_to_service, PeripheralError, RequestType},
+    peripheral::{
+        get_cell_volts, get_levels, get_temps, handle_data, subscribe_to_service, PeripheralError,
+        RequestType,
+    },
     state::AppState,
 };
 
@@ -213,6 +221,82 @@ pub async fn request_single_event(
 }
 
 #[tauri::command]
-pub async fn request_multiple_events() -> Result<(), String> {
+pub async fn request_multiple_events(
+    state: tauri::State<'_, AppState>,
+    app: tauri::AppHandle,
+) -> Result<(), String> {
+    let path_resolver = app.path_resolver();
+    let data_dir = path_resolver.app_data_dir().unwrap();
+
+    let peripheral = state.chosen_peripheral.lock().unwrap().to_owned().unwrap();
+    let rx_char = subscribe_to_service(&peripheral).await.unwrap();
+
+    let mut notification_stream = peripheral.notifications().await.unwrap();
+
+    let stop_recording = Arc::new(Mutex::new(false));
+    let stop_recording_clone = stop_recording.clone();
+    let _event_id = app.listen_global("stop-recording", move |_event| {
+        println!("Recording stopped");
+        *stop_recording_clone.lock().unwrap() = true;
+    });
+
+    let mut count: u64 = 0;
+    let mut request_type = RequestType::GetLevels;
+    let interval = 3;
+    loop {
+        if stop_recording.lock().unwrap().to_owned() {
+            println!("Stopping recording");
+            break;
+        }
+        select! {
+            notification = notification_stream.next() => {
+                // get_levels(&peripheral, &rx_char).await.unwrap();
+                if let Some(notification) = notification {
+                    let mut packet = notification.value;
+                    let payload = DataView::new(&mut packet[3..]);
+
+                    let system_time = std::time::SystemTime::now();
+                    let timestamp = system_time
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_millis();
+
+                    let data_type = handle_data(payload, &request_type);
+                    let data = Data {
+                        data: data_type,
+                        timestamp,
+                    };
+                    app.emit_all("Data", data.clone()).unwrap();
+                    // let data_json = serde_json::to_string(&data).unwrap();
+                    let file_path = data_dir.join("data").join("bt-data.json");
+                    if let Err(e) = save_data_to_file(data, file_path).await {
+                        println!("Error saving data: {:?}", e);
+                    }
+
+                }
+
+            }
+            _ = time::sleep(Duration::from_secs(interval)) => {
+                count += 1;
+
+                if count % (interval * 20) == 0 {
+                    request_type = RequestType::GetTemps;
+                    if let Err(e) = get_temps(&peripheral, &rx_char).await {
+                        println!("Error getting temps: {:?}", e);
+                    }
+                } else if count % (interval * 10) == 0 {
+                    request_type = RequestType::GetCellVolts;
+                    if let Err(e) = get_cell_volts(&peripheral, &rx_char).await {
+                        println!("Error getting cell volts: {:?}", e);
+                    }
+                } else {
+                    request_type = RequestType::GetLevels;
+                    if let Err(e) = get_levels(&peripheral, &rx_char).await {
+                        println!("Error getting levels: {:?}", e);
+                    }
+                }
+            }
+        }
+    }
     Ok(())
 }

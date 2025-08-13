@@ -1,0 +1,28 @@
+#gear-icon {
+  position: absolute;
+  top: 0;
+  right: 0;
+  margin: 10px;
+  color: #fff;
+  font-size: 30px;
+  cursor: pointer;
+  z-index: 100;
+}
+
+#gear-icon:hover {
+  color: #ccc;
+}
+
+/* Position settings in the center of the screen taking up 80% */
+#settings {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80%;
+  height: 80%;
+  background: #000;
+  border-radius: 10px;
+  z-index: 100;
+  color: #fff;
+}

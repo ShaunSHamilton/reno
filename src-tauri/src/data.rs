@@ -3,7 +3,7 @@ use std::fmt::Formatter;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Data {
     pub data: DataType,
     pub timestamp: u128,
@@ -35,7 +35,7 @@ impl Debug for Data {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum DataType {
     Levels {
         current: f32,
